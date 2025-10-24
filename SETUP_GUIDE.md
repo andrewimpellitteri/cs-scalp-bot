@@ -133,15 +133,10 @@ This moves you to your Documents folder.
 
 ### 3.3 Download the Bot
 
-Copy and paste this command (replace `YOUR-GITHUB-USERNAME` and `REPO-NAME` with the actual values):
+Copy and paste this command 
 
 ```bash
-git clone https://github.com/YOUR-GITHUB-USERNAME/scalp_bot.git
-```
-
-**Example:**
-```bash
-git clone https://github.com/andrewimpellitteri/scalp_bot.git
+git clone https://github.com/andrewimpellitteri/cs-scalp-bot.git
 ```
 
 Wait for the download to complete. You'll now have a folder called `scalp_bot` in your Documents.
