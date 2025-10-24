@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  scalp-bot:
+    build: .
+    container_name: scalp-bot
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount data directory for persistence
+      - ./data:/app/data
+      # Mount config file if you want to use external config
+      # - ./config.json:/app/config.json
+    environment:
+      # Set to 'live' when ready for real trading (default is 'dry_run')
+      - TRADING_MODE=dry_run
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

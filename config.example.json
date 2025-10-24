@@ -1,0 +1,26 @@
+{
+  "trading_mode": "dry_run",
+  "symbols": ["TSLA"],
+  "strategy": {
+    "entry_drop_percent": 0.5,
+    "entry_timeframe_minutes": 5,
+    "profit_target_percent": 0.3,
+    "stop_loss_percent": 0.4,
+    "use_trailing_stop": false,
+    "trailing_stop_percent": 0.2,
+    "avoid_first_minutes": 30,
+    "avoid_last_minutes": 30,
+    "close_positions_at_eod": true
+  },
+  "risk": {
+    "position_size_percent": 10.0,
+    "max_positions": 1,
+    "max_daily_loss_percent": 5.0,
+    "max_daily_trades": 100,
+    "max_trade_frequency_seconds": 30
+  },
+  "schwab_app_key": null,
+  "schwab_app_secret": null,
+  "schwab_token_path": "./data/tokens.json",
+  "database_url": "sqlite+aiosqlite:///./data/trades.db"
+}
