@@ -11,12 +11,13 @@ This guide will walk you through every step needed to get the scalping bot runni
 1. [What You'll Need](#what-youll-need)
 2. [Step 1: Install Homebrew](#step-1-install-homebrew)
 3. [Step 2: Install Docker Desktop](#step-2-install-docker-desktop)
-4. [Step 3: Download the Bot from GitHub](#step-3-download-the-bot-from-github)
-5. [Step 4: Run the Bot](#step-4-run-the-bot)
-6. [Step 5: Configure Your Strategy](#step-5-configure-your-strategy)
-7. [Step 6: Setting Up Schwab API (For Live Trading)](#step-6-setting-up-schwab-api-for-live-trading)
-8. [Troubleshooting](#troubleshooting)
-9. [Daily Usage](#daily-usage)
+4. [Step 3: Set Up a Separate Schwab Account](#step-3-set-up-a-separate-schwab-account-critical)
+5. [Step 4: Download the Bot from GitHub](#step-4-download-the-bot-from-github)
+6. [Step 5: Run the Bot](#step-5-run-the-bot)
+7. [Step 6: Configure Your Strategy](#step-6-configure-your-strategy)
+8. [Step 7: Setting Up Schwab API (For Live Trading)](#step-7-setting-up-schwab-api-for-live-trading)
+9. [Troubleshooting](#troubleshooting)
+10. [Daily Usage](#daily-usage)
 
 ---
 
@@ -107,9 +108,73 @@ You should see something like `Docker version 24.x.x` - success!
 
 ---
 
-## Step 3: Download the Bot from GitHub
+## Step 3: Set Up a Separate Schwab Account (CRITICAL!)
 
-### 3.1 Install Git (if not already installed)
+⚠️ **DO THIS BEFORE RUNNING THE BOT!** ⚠️
+
+### Why You Need a Separate Account
+
+**NEVER use your main trading account with the bot!** Here's why:
+
+- Keeps your main investments safe and untouched
+- Limits maximum possible loss to only the test account balance
+- Makes it easier to track bot performance separately
+- If something goes wrong, only the test account is affected
+
+**Example:**
+- Your main account: $100,000 (never touched by the bot)
+- Bot test account: $2,000 (bot only trades here)
+- Maximum possible loss: $2,000 (only what's in the test account)
+
+### How to Create a Separate Schwab Account
+
+This is **super easy** and takes about 10 minutes:
+
+1. **Log in to your Schwab account** at https://www.schwab.com/
+
+2. **Click "Open New Account"** (usually in the top right corner)
+
+3. **Select "Individual Brokerage Account"**
+   - Choose the same type as your main account
+   - This will be linked to your existing Schwab login
+
+4. **Complete the Application**
+   - Fill in required information (about 5-10 minutes)
+   - You can use the same info as your main account
+   - The account will be linked to your existing login
+
+5. **Fund the Account**
+   - **For testing/learning:** Start with $1,000 - $2,000
+   - **For live trading:** Only deposit money you can afford to lose
+   - Transfer from your main Schwab account or from your bank
+
+6. **Write Down the Account Number**
+   - You'll see it after account creation
+   - Format: XXXX-XXXX (8 digits with hyphen)
+   - You'll need this to configure the bot
+
+7. **Enable Real-Time Quotes** (Optional but Recommended)
+   - Log in to the new account
+   - Go to Settings → Data & Research
+   - Enable real-time market data (usually free)
+
+### Important Notes
+
+- ✅ Both accounts use the **same login** (your existing Schwab username/password)
+- ✅ You can switch between accounts in the Schwab app/website dropdown
+- ✅ The bot will **only** trade in the account you configure it with
+- ✅ Your main account balance stays completely separate
+- ✅ You can close the test account anytime if you stop using the bot
+
+### After Creating the Account
+
+You'll configure the bot with this account number later in Step 6. Keep the account number handy!
+
+---
+
+## Step 4: Download the Bot from GitHub
+
+### 4.1 Install Git (if not already installed)
 
 In Terminal, type:
 ```bash
@@ -120,7 +185,7 @@ If you see a version number, Git is already installed - **skip to Step 3.2**.
 
 If not, you'll be prompted to install Command Line Tools - click "Install" and wait.
 
-### 3.2 Choose a Location
+### 4.2 Choose a Location
 
 Decide where you want to keep the bot files. We recommend your Documents folder.
 
@@ -131,7 +196,7 @@ cd ~/Documents
 
 This moves you to your Documents folder.
 
-### 3.3 Download the Bot
+### 4.3 Download the Bot
 
 Copy and paste this command 
 
@@ -141,7 +206,7 @@ git clone https://github.com/andrewimpellitteri/cs-scalp-bot.git
 
 Wait for the download to complete. You'll now have a folder called `scalp_bot` in your Documents.
 
-### 3.4 Enter the Bot Directory
+### 4.4 Enter the Bot Directory
 
 ```bash
 cd scalp_bot
@@ -151,11 +216,11 @@ You're now inside the bot's folder.
 
 ---
 
-## Step 4: Run the Bot
+## Step 5: Run the Bot
 
 This is the easy part!
 
-### 4.1 Start the Bot with Docker
+### 5.1 Start the Bot with Docker
 
 In Terminal (make sure you're still in the `scalp_bot` folder), type:
 
@@ -167,7 +232,7 @@ docker-compose up -d
 - `-d` means it runs in the background
 - You'll see lots of text scroll by - this is normal!
 
-### 4.2 Open the Dashboard
+### 5.2 Open the Dashboard
 
 1. Open your web browser (Safari, Chrome, etc.)
 2. Go to: http://localhost:8000
@@ -177,13 +242,13 @@ docker-compose up -d
 
 ---
 
-## Step 5: Configure Your Strategy
+## Step 6: Configure Your Strategy
 
-### 5.1 Open the Dashboard
+### 6.1 Open the Dashboard
 
 Make sure you're at http://localhost:8000
 
-### 5.2 Click "Configure" Button
+### 6.2 Click "Configure" Button
 
 You'll see a configuration screen with all the settings.
 
@@ -215,11 +280,11 @@ Click "Save Configuration" at the bottom.
 
 ---
 
-## Step 6: Setting Up Schwab API (For Live Trading)
+## Step 7: Setting Up Schwab API (For Live Trading)
 
 ⚠️ **Warning**: Only do this AFTER you've tested extensively in dry-run mode!
 
-### 6.1 Create a Schwab Developer Account
+### 7.1 Create a Schwab Developer Account
 
 1. Go to https://developer.schwab.com/
 2. Click "Register" in the top right

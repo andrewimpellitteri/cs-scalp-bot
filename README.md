@@ -121,7 +121,35 @@ The bot can be configured through the web dashboard or by modifying the configur
 - Requires Schwab developer API credentials
 - **Use with caution** - real money at risk!
 
-## Schwab API Setup
+## Schwab Account Setup
+
+### CRITICAL: Use a Separate Account!
+
+**⚠️ Never use your main Schwab account with the bot!**
+
+Create a separate Schwab brokerage account for bot trading:
+
+1. **Why it's important:**
+   - Protects your main investments from any bot issues
+   - Limits maximum loss to only what's in the test account
+   - Makes performance tracking easier
+   - Your main account stays completely untouched
+
+2. **How to create a separate account (takes 10 minutes):**
+   - Log in to Schwab.com with your existing account
+   - Click "Open New Account" → "Individual Brokerage Account"
+   - Complete the application (uses same login as main account)
+   - Fund with small amount for testing ($1,000-$2,000 recommended)
+   - Write down the new account number
+
+3. **Example protection:**
+   - Main account: $100,000 (never touched)
+   - Bot test account: $2,000 (bot only trades here)
+   - Maximum possible loss: Only the $2,000 in test account
+
+See [SETUP_GUIDE.md](SETUP_GUIDE.md#step-3-set-up-a-separate-schwab-account-critical) for detailed instructions.
+
+## Schwab API Setup (For Live Trading)
 
 To use live trading, you'll need to set up the Schwab API:
 
