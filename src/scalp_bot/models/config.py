@@ -76,20 +76,26 @@ class StrategyConfig(BaseModel):
 
 
 class RiskConfig(BaseModel):
-    """Risk management configuration."""
+    """Risk management configuration with multiple safety layers."""
 
     # Position sizing
     position_size_percent: float = Field(
         default=10.0,
         description="Percentage of account balance to use per trade",
         ge=1.0,
-        le=100.0
+        le=50.0  # Hard cap at 50% - never risk more than half on one trade
+    )
+    max_position_value_dollars: Optional[float] = Field(
+        default=None,
+        description="Maximum dollar value per position (overrides % if lower)",
+        ge=100.0,
+        le=100000.0
     )
     max_positions: int = Field(
         default=1,
         description="Maximum number of concurrent positions",
         ge=1,
-        le=10
+        le=5  # Reduced from 10 - safer for scalping
     )
 
     # Daily limits
@@ -97,13 +103,19 @@ class RiskConfig(BaseModel):
         default=5.0,
         description="Stop trading if daily loss exceeds this %",
         ge=0.0,
-        le=50.0
+        le=20.0  # Hard cap at 20% daily loss
+    )
+    max_daily_loss_dollars: Optional[float] = Field(
+        default=None,
+        description="Stop trading if daily loss exceeds this $ amount",
+        ge=0.0,
+        le=50000.0
     )
     max_daily_trades: Optional[int] = Field(
         default=100,
         description="Maximum trades per day",
         ge=1,
-        le=1000
+        le=500  # Increased for scalping but still reasonable
     )
 
     # Safety checks
@@ -112,6 +124,42 @@ class RiskConfig(BaseModel):
         description="Minimum seconds between trades",
         ge=1,
         le=300
+    )
+
+    # Circuit breakers (CRITICAL SAFETY)
+    max_consecutive_losses: int = Field(
+        default=5,
+        description="Stop trading after this many losses in a row",
+        ge=1,
+        le=20
+    )
+    max_account_drawdown_percent: float = Field(
+        default=10.0,
+        description="KILL SWITCH: Stop trading if account drops this % from starting balance",
+        ge=1.0,
+        le=30.0
+    )
+
+    # Order limits (prevent fat finger errors)
+    max_shares_per_trade: Optional[int] = Field(
+        default=None,
+        description="Hard limit on number of shares per trade (safety check)",
+        ge=1,
+        le=10000
+    )
+
+    # Cool-down period after hitting limits
+    cooldown_after_daily_loss_minutes: int = Field(
+        default=60,
+        description="Minutes to wait before allowing restart after hitting daily loss",
+        ge=0,
+        le=1440  # Max 24 hours
+    )
+
+    # Emergency stop flag
+    require_manual_restart_after_stop: bool = Field(
+        default=True,
+        description="Require manual restart if bot stops due to risk limits"
     )
 
 

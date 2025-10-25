@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class TradingStats:
-    """Track trading statistics."""
+    """Track trading statistics with enhanced safety monitoring."""
 
     def __init__(self):
         self.daily_trades = 0
@@ -22,11 +22,25 @@ class TradingStats:
         self.total_wins = 0
         self.total_losses = 0
 
+        # Enhanced tracking
+        self.consecutive_losses = 0
+        self.consecutive_wins = 0
+        self.largest_loss = 0.0
+        self.largest_win = 0.0
+
+        # Safety flags
+        self.stopped_by_risk_limit = False
+        self.stop_reason: Optional[str] = None
+        self.cooldown_until: Optional[datetime] = None
+
     def reset_daily(self) -> None:
         """Reset daily statistics."""
         self.daily_trades = 0
         self.daily_pnl = 0.0
         self.session_start = datetime.utcnow()
+        self.stopped_by_risk_limit = False
+        self.stop_reason = None
+        self.cooldown_until = None
 
     def record_trade(self, pnl: float) -> None:
         """Record a completed trade."""
@@ -36,8 +50,29 @@ class TradingStats:
 
         if pnl > 0:
             self.total_wins += 1
+            self.consecutive_wins += 1
+            self.consecutive_losses = 0  # Reset losing streak
+            if pnl > self.largest_win:
+                self.largest_win = pnl
         else:
             self.total_losses += 1
+            self.consecutive_losses += 1
+            self.consecutive_wins = 0  # Reset winning streak
+            if pnl < self.largest_loss:
+                self.largest_loss = pnl
+
+    def is_in_cooldown(self) -> bool:
+        """Check if bot is in cooldown period."""
+        if self.cooldown_until is None:
+            return False
+        return datetime.utcnow() < self.cooldown_until
+
+    def set_cooldown(self, minutes: int, reason: str) -> None:
+        """Set cooldown period."""
+        self.cooldown_until = datetime.utcnow() + timedelta(minutes=minutes)
+        self.stopped_by_risk_limit = True
+        self.stop_reason = reason
+        logger.warning(f"COOLDOWN ACTIVATED: {reason} - Bot locked until {self.cooldown_until}")
 
 
 class TradingEngine:
@@ -177,17 +212,47 @@ class TradingEngine:
         price: float,
         reason: str
     ) -> Optional[Position]:
-        """Open a new position."""
+        """Open a new position with enhanced safety checks."""
         try:
-            # Calculate position size
+            # Calculate position size based on percentage
             position_value = self.account_balance * (
                 self.config.risk.position_size_percent / 100
             )
+
+            # Apply max dollar value limit if configured
+            if self.config.risk.max_position_value_dollars:
+                position_value = min(position_value, self.config.risk.max_position_value_dollars)
+                logger.info(f"Position value capped at ${position_value:.2f}")
+
             quantity = int(position_value / price)
+
+            # SAFETY CHECK: Enforce max shares per trade
+            if self.config.risk.max_shares_per_trade:
+                if quantity > self.config.risk.max_shares_per_trade:
+                    logger.warning(
+                        f"Quantity {quantity} exceeds max_shares_per_trade "
+                        f"{self.config.risk.max_shares_per_trade} - adjusting"
+                    )
+                    quantity = self.config.risk.max_shares_per_trade
 
             if quantity <= 0:
                 logger.warning(f"Insufficient funds to open position in {symbol}")
                 return None
+
+            # SAFETY CHECK: Validate position value isn't absurdly high
+            total_cost = quantity * price
+            if total_cost > self.account_balance:
+                logger.error(
+                    f"SAFETY: Position cost ${total_cost:.2f} exceeds account balance "
+                    f"${self.account_balance:.2f} - rejecting trade"
+                )
+                return None
+
+            # Log position details for verification
+            logger.info(
+                f"Opening position: {quantity} shares x ${price:.2f} = ${total_cost:.2f} "
+                f"({(total_cost/self.account_balance)*100:.1f}% of account)"
+            )
 
             # Create buy trade
             trade = Trade(
@@ -299,22 +364,65 @@ class TradingEngine:
                 await self._close_position(symbol, current_price, reason)
 
     def _check_risk_limits(self) -> bool:
-        """Check if we're within risk limits."""
+        """
+        ENHANCED RISK LIMIT CHECKING - Multiple layers of protection.
+
+        Returns False if ANY limit is exceeded, stopping all trading.
+        """
+        # Check if in cooldown period
+        if self.stats.is_in_cooldown():
+            remaining = (self.stats.cooldown_until - datetime.utcnow()).total_seconds() / 60
+            if remaining > 0:
+                logger.debug(f"In cooldown: {remaining:.1f} minutes remaining")
+                return False
+            else:
+                # Cooldown expired
+                self.stats.cooldown_until = None
+                logger.info("Cooldown period expired")
+
+        # Check if stopped by risk limit and requires manual restart
+        if self.stats.stopped_by_risk_limit and self.config.risk.require_manual_restart_after_stop:
+            logger.warning("Bot stopped by risk limit - manual restart required")
+            return False
+
+        # CIRCUIT BREAKER 1: Account drawdown (KILL SWITCH)
+        current_drawdown = ((self.initial_balance - self.account_balance) / self.initial_balance) * 100
+        if current_drawdown >= self.config.risk.max_account_drawdown_percent:
+            reason = f"KILL SWITCH ACTIVATED: Account drawdown {current_drawdown:.2f}% >= {self.config.risk.max_account_drawdown_percent}%"
+            logger.critical(reason)
+            self.stats.set_cooldown(self.config.risk.cooldown_after_daily_loss_minutes, reason)
+            return False
+
+        # CIRCUIT BREAKER 2: Consecutive losses
+        if self.stats.consecutive_losses >= self.config.risk.max_consecutive_losses:
+            reason = f"Too many consecutive losses: {self.stats.consecutive_losses}"
+            logger.error(reason)
+            self.stats.set_cooldown(self.config.risk.cooldown_after_daily_loss_minutes, reason)
+            return False
+
         # Check daily trade limit
         if self.config.risk.max_daily_trades:
             if self.stats.daily_trades >= self.config.risk.max_daily_trades:
-                logger.warning(
-                    f"Daily trade limit reached: {self.stats.daily_trades}"
-                )
+                reason = f"Daily trade limit reached: {self.stats.daily_trades}/{self.config.risk.max_daily_trades}"
+                logger.warning(reason)
+                self.stats.set_cooldown(60, reason)  # 1 hour cooldown
                 return False
 
-        # Check daily loss limit
-        if self.config.risk.max_daily_loss_percent:
+        # Check daily loss limit (percentage)
+        if self.config.risk.max_daily_loss_percent and self.initial_balance > 0:
             loss_percent = (self.stats.daily_pnl / self.initial_balance) * 100
             if loss_percent <= -self.config.risk.max_daily_loss_percent:
-                logger.warning(
-                    f"Daily loss limit exceeded: {loss_percent:.2f}%"
-                )
+                reason = f"Daily loss % limit exceeded: {loss_percent:.2f}% <= -{self.config.risk.max_daily_loss_percent}%"
+                logger.error(reason)
+                self.stats.set_cooldown(self.config.risk.cooldown_after_daily_loss_minutes, reason)
+                return False
+
+        # Check daily loss limit (dollar amount)
+        if self.config.risk.max_daily_loss_dollars:
+            if self.stats.daily_pnl <= -self.config.risk.max_daily_loss_dollars:
+                reason = f"Daily loss $ limit exceeded: ${self.stats.daily_pnl:.2f} <= -${self.config.risk.max_daily_loss_dollars}"
+                logger.error(reason)
+                self.stats.set_cooldown(self.config.risk.cooldown_after_daily_loss_minutes, reason)
                 return False
 
         # Check trade frequency
