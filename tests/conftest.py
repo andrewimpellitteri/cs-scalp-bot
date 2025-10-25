@@ -44,9 +44,10 @@ def dry_run_broker():
 
 
 @pytest.fixture
-async def connected_broker(dry_run_broker):
+def connected_broker(dry_run_broker):
     """Connected dry run broker."""
-    await dry_run_broker.connect()
+    import asyncio
+    asyncio.get_event_loop().run_until_complete(dry_run_broker.connect())
     return dry_run_broker
 
 
@@ -69,13 +70,14 @@ def risk_config():
 
 
 @pytest.fixture
-async def trading_engine(default_config, connected_broker):
+def trading_engine(default_config, connected_broker):
     """Trading engine with connected broker."""
+    import asyncio
     engine = TradingEngine(config=default_config, broker_client=connected_broker)
-    await engine.start()
+    asyncio.get_event_loop().run_until_complete(engine.start())
     yield engine
     if engine.is_running:
-        await engine.stop()
+        asyncio.get_event_loop().run_until_complete(engine.stop())
 
 
 @pytest.fixture
